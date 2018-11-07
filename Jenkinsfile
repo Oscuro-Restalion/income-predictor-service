@@ -26,14 +26,7 @@ pipeline {
         stage('Unit tests') {
             steps {
                 echo "-=- execute unit tests -=-"
-                echo "no tests in DTOs project"
-            }
-        }
-
-        stage('Mutation tests') {
-            steps {
-                echo "-=- execute mutation tests -=-"
-                echo "no tests in DTOs project"
+                sh "mvn test"
             }
         }
 
