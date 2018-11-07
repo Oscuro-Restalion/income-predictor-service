@@ -28,6 +28,8 @@
 		<scala.binary.version>2.11</scala.binary.version>
 		<apache.spark.version>2.2.1</apache.spark.version>
 		<commons-math3.version>3.4.1</commons-math3.version>
+		<!-- Dependency check -->
+		<dependency-check.version>3.3.2</dependency-check.version>
 	</properties>
 
 	<dependencies>
