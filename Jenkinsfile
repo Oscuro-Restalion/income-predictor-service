@@ -23,13 +23,13 @@ pipeline {
             }
         }
 
-        stage('Unit tests') {
-            steps {
-                echo "-=- execute unit tests -=-"
-                sh "mvn dependency:tree -Dverbose -Dincludes=oscuroweb"
-                sh "mvn test"
-            }
-        }
+//        stage('Unit tests') {
+//            steps {
+//                echo "-=- execute unit tests -=-"
+//                sh "mvn dependency:tree -Dverbose -Dincludes=oscuroweb"
+//                sh "mvn test"
+//            }
+//        }
 
         stage('Package') {
             steps {
