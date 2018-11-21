@@ -1,22 +1,30 @@
 #!groovy
 
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.5.4-jdk-8'
-            args '--network ci --mount type=volume,source=ci-maven-home,target=/root/.m2'
-        }
-    }
 
+	agent any
+	
+    parameters {
+        string(name: 'localPath', defaultValue: '/Users/oscuro/workspace/commitconf2018/income-predictor-data', description: 'Local path of income predictor data')
+    }
+    
     environment {
-        ORG_NAME = "oscuroweb"
-        APP_NAME = "income-predictor-dto"
+        ORG_NAME = "oscurorestalion"
+        APP_NAME = "income-predictor-service"
         APP_CONTEXT_ROOT = "oscuroweb"
-        TEST_CONTAINER_NAME = "ci-${APP_NAME}-${BUILD_NUMBER}"
+        CONTAINER_NAME = "ci-income-predictor-service"
+        IMAGE_NAME = "${ORG_NAME}/${APP_NAME}"
     }
 
     stages {
         stage('Compile') {
+        
+		    agent {
+		        docker {
+		            image 'maven:3.5.4-jdk-8'
+		            args '--network ci --mount type=volume,source=ci-maven-home,target=/root/.m2'
+		        }
+		    }
             steps {
                 echo "-=- compiling project -=-"
                 sh "mvn clean compile"
@@ -32,6 +40,12 @@ pipeline {
 //        }
 
         stage('Package') {
+        	agent {
+		        docker {
+		            image 'maven:3.5.4-jdk-8'
+		            args '--network ci --mount type=volume,source=ci-maven-home,target=/root/.m2'
+		        }
+		    }
             steps {
                 echo "-=- packaging project -=-"
                 sh "mvn package -DskipTests"
@@ -42,14 +56,22 @@ pipeline {
         stage('Build Docker image') {
             steps {
                 echo "-=- build Docker image -=-"
-                echo "Not an executable project so no Docker image build is needed"
+				script {
+                    step ([
+                    	$class: "CopyArtifact",
+                 		projectName: "${JOB_NAME}",
+                 		selector: [$class: "SpecificBuildSelector", buildNumber: "${BUILD_NUMBER}"]
+             		])
+             		
+                    def image = docker.build("${IMAGE_NAME}:${env.BUILD_ID}")
+                }
             }
         }
 
         stage('Run Docker image') {
             steps {
                 echo "-=- run Docker image -=-"
-                echo "Not an executable project so no Docker image run is needed"
+                sh "docker run -p 8082:8082 --network ci -v ${localPath}:/data/income-predictor -e MODEL_PATH=/data/income-predictor/output-data --name ${env.CONTAINER_NAME} -d ${IMAGE_NAME}:${env.BUILD_ID}"
             }
         }
 
@@ -68,6 +90,12 @@ pipeline {
         }
 
         stage('Dependency vulnerability tests') {
+        	agent {
+		        docker {
+		            image 'maven:3.5.4-jdk-8'
+		            args '--network ci --mount type=volume,source=ci-maven-home,target=/root/.m2'
+		        }
+		    }
             steps {
                 echo "-=- run dependency vulnerability tests -=-"
                 sh "mvn dependency-check:check"
@@ -77,8 +105,10 @@ pipeline {
         stage('Push Artifact') {
             steps {
                 echo "-=- push Artifact -=-"
-                echo "Not an executable project so no Docker image needed, anyway jar file need to be installed"
-                sh "mvn install -DskipTests"
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKERHUB_PASSWORD', usernameVariable: 'DOCKERHUB_USERNAME')]) {
+                    sh "docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}"
+                    sh "docker push ${IMAGE_NAME}:${env.BUILD_ID}"
+                }
             }
         }
     }
